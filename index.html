@@ -15,6 +15,9 @@
   .legend .bar { width: 160px; height: 12px; margin: 4px 0; border: 1px solid #666;
                  background: linear-gradient(to right, #ffff00, #ff0000); }
   .legend .row { display: flex; justify-content: space-between; }
+  /* [추가] 필터 슬라이더 스타일 */
+  .filter-box { background: #fff; padding: 8px 10px; border-radius: 6px; box-shadow: 0 1px 5px rgba(0,0,0,.4); font: 13px/1.4 sans-serif; width: 190px; }
+  .filter-box input[type=range] { width: 100%; }
 </style>
 </head>
 <body>
@@ -80,6 +83,34 @@ legend.onAdd = function () {
   return div;
 };
 legend.addTo(map);
+
+// ===== [추가] 적합도 필터 슬라이더 (기준값 미만 포인트는 투명 처리) =====
+const filterCtl = L.control({ position: 'topright' });
+filterCtl.onAdd = function () {
+  const div = L.DomUtil.create('div', 'filter-box');
+  div.innerHTML =
+    '<b>적합도 필터</b><br>기준값 이상만 표시: <b id="thVal">' + minS.toFixed(2) + '</b>' +
+    '<input id="thSlider" type="range" min="' + (Math.floor(minS * 100) / 100) + '" max="' + maxS.toFixed(2) +
+    '" step="0.01" value="' + (Math.floor(minS * 100) / 100) + '">' +
+    '<div id="thCount"></div>';
+  L.DomEvent.disableClickPropagation(div);   // 슬라이더 조작 시 지도가 같이 움직이지 않게
+  return div;
+};
+filterCtl.addTo(map);
+
+// 기준값 미만 포인트는 opacity를 낮춰 투명하게, 이상이면 원래대로 복원
+function applyFilter(th) {
+  let shown = 0;
+  pointLayer.eachLayer(layer => {
+    const ok = layer.feature.properties.SCORE >= th;
+    layer.setStyle({ fillOpacity: ok ? 0.85 : 0.05, opacity: ok ? 1 : 0.1 });
+    if (ok) shown++;
+  });
+  document.getElementById('thVal').textContent = Number(th).toFixed(2);
+  document.getElementById('thCount').textContent = '표시 중: ' + shown + ' / ' + scores.length + '개';
+}
+document.getElementById('thSlider').addEventListener('input', e => applyFilter(parseFloat(e.target.value)));
+applyFilter(parseFloat(document.getElementById('thSlider').value));
 </script>
 </body>
 </html>
